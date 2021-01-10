@@ -34,7 +34,7 @@ var userSchema = mongoose.Schema({
     password : String,
     salt : String,
     name : String,
-    gallery : [new mongoose.Schema({imageBitmap: String})],
+    gallery : [new mongoose.Schema({imageBitmap: String}), {_id: false}],
     contactList : [new mongoose.Schema({name: String, number: String}, {_id: false})]
 });
 
@@ -46,6 +46,16 @@ userSchema.methods.addContact = function(info){
 userSchema.methods.removeContact = function(info){
   this.contactList.pull({name: info.name, number: info.number});
   console.log(this.contactList)
+  return this.save()
+}
+
+userSchema.methods.addImage = function(info){
+  this.gallery.push({No: info.No, imageBitmap: info.imageBitmap});
+  return this.save()
+}
+
+userSchema.methods.removeImage = function(info){
+  this.gallery.pull({No: info.No, imageBitmap: info.imageBitmap});
   return this.save()
 }
 
@@ -205,7 +215,13 @@ app.post('/facebookLogin', (req, res) => {
       res.send(err);
     } else{
       if (notice_dt.length != 0) {
-        notice_dt[0].gallery.push({imageBitmap : req.body.bitmap})
+        console.log("save image success")
+        var number = notice_dt[0].gallery.length;
+        notice_dt[0].addImage({No: number, imageBitmap: req.body.bitmap}, function(err, result){
+          if(err){
+            throw err;
+          }
+        })
         Success = "Success";
         res.write(Success);
         res.end();
@@ -218,32 +234,49 @@ app.post('/facebookLogin', (req, res) => {
  })
 
  //image read
- app.get('/getImages', (req,res) => {
+ app.post('/getImages', (req,res) => {
    console.log("getImage")
-   console.log("id = " + req.body.userID)
-   var result = {
-    'Success' : "Fail",
-    'gallery' : {}
-  };
+   console.log("id = " + req.body._id)
 
    var NewUser = mongoose.model('user', userSchema);
-   NewUser.find({_id: req.body.userID}, function(err, notice_dt) {
+   NewUser.find({_id: req.body._id}, function(err, notice_dt) {
     if (err) {
       console.log("signup error")
       res.send(err);
     } else{
-      if (notice_dt.length != 0) {
-        //result.gallery = notice_dt[0].gallery
-        //result.Success = "Success"
-        res.write(result);
-        res.end();
-      } else {
-        res.write(result);
-        res.end();
-      }
+      res.json(notice_dt[0])
     }
   })
  })
+
+  //image remove
+  app.post('/deleteImage', (req,res) => {
+    console.log("deleteImage");
+    var result = {
+        'Success' : 'Fail'
+    };
+    var NewUser = mongoose.model('user', userSchema)
+    console.log("uid is "+req.body._id)
+    NewUser.find({_id: req.body._id}, function(err, notice_dt){
+        if(err){
+            console.log("image delete error")
+            res.send(err);
+        }else{
+            if(notice_dt[0].length == 0){
+                res.json(result)
+            }else{
+                result.Success = 'Success'
+                notice_dt[0].removeImage({imageBitmap: req.body.bitmap}, function(err, result){
+                  if(err){
+                    throw err;
+                  }
+                })
+                result.Success = "Success"
+                res.json(result)
+            }
+        }
+    });
+  })
 
 
 //contact
@@ -259,11 +292,10 @@ app.post('/get_contact', (req, res) => {
       console.log("before return")
       console.log(notice_dt[0].contactList)
       res.json(notice_dt[0])
-      //res.json(notice_dt[0].contactList
-      //이거 리턴되는거 출력해서 형식좀 잘 확인한 다음에 파싱해야될듯...
     }
   });
 });
+
 app.post('/add_contact', (req, res) => {
     console.log("add_contact");
     var result = {
@@ -303,7 +335,6 @@ app.post('/delete_contact', (req, res) => {
             res.send(err);
         }else{
             if(notice_dt[0].length == 0){
-                console.log("이상한 에러 왜 uid가 없을까")
                 res.json(result)
             }else{
                 result.Success = 'Success'
@@ -312,7 +343,6 @@ app.post('/delete_contact', (req, res) => {
                   if(err){
                     throw err;
                   }
-                  console.log(result)
                 })
                 console.log("after log")
                 result.Success = "Success"
