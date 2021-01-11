@@ -34,7 +34,7 @@ var userSchema = mongoose.Schema({
     password : String,
     salt : String,
     name : String,
-    gallery : [new mongoose.Schema({imageBitmap: String}), {_id: false}],
+    gallery : [new mongoose.Schema({No: String, imageBitmap: String}), {_id: false}],
     contactList : [new mongoose.Schema({name: String, number: String}, {_id: false})]
 });
 
@@ -55,7 +55,8 @@ userSchema.methods.addImage = function(info){
 }
 
 userSchema.methods.removeImage = function(info){
-  this.gallery.pull({No: info.No, imageBitmap: info.imageBitmap});
+  console.log(info)
+  this.gallery.pull({No: info.No});
   return this.save()
 }
 
@@ -111,8 +112,7 @@ app.post('/login', (req, res) => {
       } else{
         if (notice_dt.length == 0) {
           console.log("id pw 정보 없음");
-          res.write(result);
-          res.end();
+          res.json(result)
         } else {
           var dbuser = notice_dt[0]
           var dbuserPassword = dbuser.password
@@ -216,8 +216,8 @@ app.post('/facebookLogin', (req, res) => {
     } else{
       if (notice_dt.length != 0) {
         console.log("save image success")
-        var number = notice_dt[0].gallery.length;
-        notice_dt[0].addImage({No: number, imageBitmap: req.body.bitmap}, function(err, result){
+        var No = notice_dt[0].gallery.length;
+        notice_dt[0].addImage({No: No, imageBitmap: req.body.bitmap}, function(err, result){
           if(err){
             throw err;
           }
@@ -265,12 +265,7 @@ app.post('/facebookLogin', (req, res) => {
             if(notice_dt[0].length == 0){
                 res.json(result)
             }else{
-                result.Success = 'Success'
-                notice_dt[0].removeImage({imageBitmap: req.body.bitmap}, function(err, result){
-                  if(err){
-                    throw err;
-                  }
-                })
+                //notice_dt[0].gallery.pull(req.body._id)
                 result.Success = "Success"
                 res.json(result)
             }
