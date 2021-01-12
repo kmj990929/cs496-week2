@@ -34,9 +34,23 @@ var userSchema = mongoose.Schema({
     password : String,
     salt : String,
     name : String,
-    gallery : [new mongoose.Schema({No: String, imageBitmap: String}), {_id: false}],
-    contactList : [new mongoose.Schema({name: String, number: String}, {_id: false})]
+    contactList : [new mongoose.Schema({name: String, number: String}, {_id: false})],
+    gallery : [new mongoose.Schema({imageBitmap: String})],
+    capture : [new mongoose.Schema({captureUri: String, webToonTitle: String})],
+    favorite : [new mongoose.Schema({title: String}, {_id: false})],
+    capturedWebtoon : [new mongoose.Schema({webToonTitle: String}, {_id:false})]
 });
+
+userSchema.methods.addfavorite = function(info){
+  this.favorite.push({title: info.title});
+  console.log(this.favorite)
+  return this.save()
+}
+userSchema.methods.removefavorite = function(info){
+  this.favorite.pull({title: info.title});
+  console.log(this.favorite)
+  return this.save()
+}
 
 userSchema.methods.addContact = function(info){
   this.contactList.push({name: info.name, number: info.number});
@@ -50,13 +64,23 @@ userSchema.methods.removeContact = function(info){
 }
 
 userSchema.methods.addImage = function(info){
-  this.gallery.push({No: info.No, imageBitmap: info.imageBitmap});
+  this.gallery.push({imageBitmap: info.imageBitmap});
   return this.save()
 }
 
 userSchema.methods.removeImage = function(info){
   console.log(info)
-  this.gallery.pull({No: info.No});
+  this.gallery.pull({_id: info._id});
+  return this.save()
+}
+
+userSchema.methods.addCapture = function(info){
+  this.capture.push({captureUri: info.captureUri, webToonTitle: info.webToonTitle});
+  return this.save()
+}
+
+userSchema.methods.addCapturedWebtoon = function(info){
+  this.capturedWebtoon.push({webToonTitle: info.webToonTitle});
   return this.save()
 }
 
@@ -205,11 +229,11 @@ app.post('/facebookLogin', (req, res) => {
 //image save
  app.post('/saveImage', (req,res) => {
    console.log("saveImage")
-   console.log("id = " + req.body.userID)
+   console.log("id = " + req.body._id)
    var Success = "Fail";
 
    var NewUser = mongoose.model('user', userSchema);
-   NewUser.find({_id: req.body.userID}, function(err, notice_dt) {
+   NewUser.find({_id: req.body._id}, function(err, notice_dt) {
     if (err) {
       console.log("signup error")
       res.send(err);
@@ -217,7 +241,7 @@ app.post('/facebookLogin', (req, res) => {
       if (notice_dt.length != 0) {
         console.log("save image success")
         var No = notice_dt[0].gallery.length;
-        notice_dt[0].addImage({No: No, imageBitmap: req.body.bitmap}, function(err, result){
+        notice_dt[0].addImage({imageBitmap: req.body.imageBitmap}, function(err, result){
           if(err){
             throw err;
           }
@@ -256,15 +280,29 @@ app.post('/facebookLogin', (req, res) => {
         'Success' : 'Fail'
     };
     var NewUser = mongoose.model('user', userSchema)
-    console.log("uid is "+req.body._id)
-    NewUser.find({_id: req.body._id}, function(err, notice_dt){
+    console.log("uid is "+req.body.uid)
+    NewUser.find({_id: req.body.uid}, function(err, notice_dt){
         if(err){
             console.log("image delete error")
             res.send(err);
         }else{
+          console.log("notice_dt[0] is ")
+          console.log(notice_dt[0])
+          console.log("req.body is ")
+          console.log(req.body)
+          console.log("now find")
             if(notice_dt[0].length == 0){
                 res.json(result)
             }else{
+              notice_dt[0].removeImage({_id: req.body._id}, function(err, result){
+                if(err){
+                  throw err;
+                }else{
+                  console.log("remove photo ")
+                  console.log(req.body._id)
+                }
+              })
+              console.log("after image remove")
                 //notice_dt[0].gallery.pull(req.body._id)
                 result.Success = "Success"
                 res.json(result)
@@ -346,6 +384,148 @@ app.post('/delete_contact', (req, res) => {
         }
     });
 });
+
+//favorite
+app.post('/get_favorite', (req, res) => {
+  console.log("get_favorite")
+  var NewUser = mongoose.model('user', userSchema)
+  console.log(req.body._id)
+  NewUser.find({_id: req.body._id}, function(err, notice_dt){
+    if(err){
+      console.log("error occured")
+      res.send(err)
+    }else{
+      console.log("before return")
+      console.log(notice_dt[0].favorite)
+      res.json(notice_dt[0])
+    }
+  });
+});
+
+app.post('/add_favorite', (req, res) => {
+  console.log("add_favorite");
+  var result = {
+      'Success' : 'Fail'
+  };
+  var NewUser = mongoose.model('user', userSchema)
+  console.log(req.body._id)
+  NewUser.find({_id: req.body._id}, function(err, notice_dt){
+      if(err){
+          console.log("error occured")
+          res.send(err);
+      }else{
+        console.log("before push")
+        console.log(req.body)
+        notice_dt[0].addfavorite({title: req.body.title}, function(err, result){
+          if(err){
+            throw err;
+          }
+          console.log(result)
+        })
+        console.log("after push")
+        result.Success = "Success"
+        res.json(result)
+      }
+  });
+});
+app.post('/remove_favorite', (req, res) => {
+  console.log("remove_favorite");
+  var result = {
+      'Success' : 'Fail'
+  };
+  var NewUser = mongoose.model('user', userSchema)
+  console.log("uid is "+req.body._id)
+  NewUser.find({_id: req.body._id}, function(err, notice_dt){
+      if(err){
+          console.log("signup error")
+          res.send(err);
+      }else{
+          if(notice_dt[0].length == 0){
+              res.json(result)
+          }else{
+              result.Success = 'Success'
+              console.log("before pull")
+              notice_dt[0].removefavorite({title: req.body.title}, function(err, result){
+                if(err){
+                  throw err;
+                }
+              })
+              console.log("after log")
+              result.Success = "Success"
+              res.json(result)
+          }
+      }
+  });
+});
+
+
+//save ScreenShot
+app.post('/saveScreenShot', (req,res) => {
+  console.log("saveScreenShot")
+  console.log("id = " + req.body._id)
+  var Success = "Fail";
+
+  var NewUser = mongoose.model('user', userSchema);
+  NewUser.find({_id: req.body._id}, function(err, notice_dt) {
+   if (err) {
+     console.log("saveScreenShot error")
+     res.send(err);
+   } else{
+     if (notice_dt.length != 0) {
+       console.log("save ScreenShot success")
+       console.log(req.body.captureUri)
+       notice_dt[0].addCapture({captureUri: req.body.captureUri, webToonTitle: req.body.webToonTitle}, function(err, result){
+         if(err){
+           throw err;
+         }
+       })
+       
+      //한번도 캡쳐 안한 웹툰을 캡쳐했을 경우
+       var step;
+       var checked = false;
+       for (step=0; step<notice_dt[0].capturedWebtoon.length; step++) {
+         if (notice_dt[0].capturedWebtoon[step].webToonTitle == req.body.webToonTitle) {
+            checked = true;
+         }
+       }
+       if (checked == false) {
+          notice_dt[0].addCapturedWebtoon({webToonTitle: req.body.webToonTitle}, function(err, result) {
+            if (err) {
+              throw err;
+            }
+          })
+          notice_dt[0].addImage({imageBitmap: req.body.webToonThumbnailBitmap}, function(err, result) {
+            if (err) {
+              throw err;
+            }
+          })
+         }
+       Success = "Success";
+       res.write(Success);
+       res.end();
+     } else {
+       res.write(Success);
+       res.end();
+     }
+   }
+ })
+})
+
+//screenshot read
+app.post('/getScreenShot', (req,res) => {
+  console.log("getScreenShot")
+  console.log("id = " + req.body._id)
+
+  var NewUser = mongoose.model('user', userSchema);
+  NewUser.find({_id: req.body._id}, function(err, notice_dt) {
+   if (err) {
+     console.log("signup error")
+     res.send(err);
+   } else{
+     res.json(notice_dt[0])
+   }
+ })
+})
 
 var server = http.createServer(app).listen(app.get('port'),function(){
    console.log("익스프레스로 웹 서버를 실행함 : "+ app.get('port')); 
