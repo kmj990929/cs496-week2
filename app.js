@@ -527,6 +527,22 @@ app.post('/getScreenShot', (req,res) => {
  })
 })
 
+app.post('/getName', (req,res) => {
+  console.log("getName")
+  console.log("id = " + req.body._id)
+
+  var NewUser = mongoose.model('user', userSchema);
+  NewUser.find({_id: req.body._id}, function(err, notice_dt) {
+   if (err) {
+     console.log("signup error")
+     res.send(err);
+   } else{
+     res.write(notice_dt[0].name)
+     res.end()
+   }
+ })
+})
+
 var server = http.createServer(app).listen(app.get('port'),function(){
    console.log("익스프레스로 웹 서버를 실행함 : "+ app.get('port')); 
 });
