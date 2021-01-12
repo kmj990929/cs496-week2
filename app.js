@@ -35,7 +35,7 @@ var userSchema = mongoose.Schema({
     salt : String,
     name : String,
     contactList : [new mongoose.Schema({name: String, number: String}, {_id: false})],
-    gallery : [new mongoose.Schema({imageBitmap: String})],
+    gallery : [new mongoose.Schema({imageBitmap: String, isCapture:Boolean, webtoonTitle: String})],
     capture : [new mongoose.Schema({captureUri: String, webToonTitle: String})],
     favorite : [new mongoose.Schema({title: String}, {_id: false})],
     capturedWebtoon : [new mongoose.Schema({webToonTitle: String}, {_id:false})]
@@ -64,7 +64,7 @@ userSchema.methods.removeContact = function(info){
 }
 
 userSchema.methods.addImage = function(info){
-  this.gallery.push({imageBitmap: info.imageBitmap});
+  this.gallery.push({imageBitmap: info.imageBitmap, isCapture:info.isCapture, webtoonTitle:info.webtoonTitle});
   return this.save()
 }
 
@@ -241,7 +241,7 @@ app.post('/facebookLogin', (req, res) => {
       if (notice_dt.length != 0) {
         console.log("save image success")
         var No = notice_dt[0].gallery.length;
-        notice_dt[0].addImage({imageBitmap: req.body.imageBitmap}, function(err, result){
+        notice_dt[0].addImage({imageBitmap: req.body.imageBitmap, isCapture:req.body.isCapture, webtoonTitle:req.body.webtoonTitle}, function(err, result){
           if(err){
             throw err;
           }
@@ -494,7 +494,7 @@ app.post('/saveScreenShot', (req,res) => {
               throw err;
             }
           })
-          notice_dt[0].addImage({imageBitmap: req.body.webToonThumbnailBitmap}, function(err, result) {
+          notice_dt[0].addImage({imageBitmap: req.body.webToonThumbnailBitmap, isCapture:req.body.isCapture, webtoonTitle:req.body.webToonTitle}, function(err, result) {
             if (err) {
               throw err;
             }
